@@ -1,6 +1,7 @@
 const {Builder, Browser, By, Key, until} = require('selenium-webdriver');
 const cheerio = require('cheerio');
 const DBHelper = require('./db-helper');
+const asyncChunks = require('./async-chunks');
 
 const MAX_PHONE_NUMBER = 50000;
 const detailUrlRegex = /tot\.com\/[\w-\/]*\d+\.htm.*/;
@@ -21,6 +22,10 @@ const blacklist = [
     '/theo-doi',
     'nhatot.com/vay-mua-nha',
     'nhatot.com/goi-vay-mua-nha',
+    'truyenthong.chotot.com',
+    'tiktok.com/',
+    'blog.chotot.com',
+    'chuong-trinh/vong-quay-may-man/',
 ];
 
 // Init database
@@ -41,14 +46,13 @@ async function extractAndSavePhoneNumber(url, $root) {
         chunkContacts.push({phone, link: url});
         addedPhoneDict[phone] = true;
         phoneCount++;
-        console.log('count by 1', phoneCount);
     }
 
     if (chunkContacts.length === 100) {
         await new Promise(resolve => {
-            dbHelper.bulkCreate("contacts", chunkContacts, (err) => {
-                if (err) console.error("Error during saving contacts", err);
-                else console.log("Saved!!!");
+            dbHelper.bulkCreate('contacts', chunkContacts, (err) => {
+                if (err) console.error('Error during saving contacts', err);
+                else console.log('Saved!!!');
                 resolve();
             });
         })
@@ -87,7 +91,6 @@ async function getSourceFromUrl(url) {
     }
     await driver.quit();
     return source;
-
 }
 
 /**
@@ -124,7 +127,7 @@ function crawlPhone(url) {
                     await extractAndSavePhoneNumber(url, $);
                 }
 
-                const promises = []
+                const links = [];
                 // Get all links in the page
                 $('a').each(function (_) {
                     let link = $(this).attr('href');
@@ -139,13 +142,12 @@ function crawlPhone(url) {
                         if ((/^https:\/\/(?!trogiup|press|careers|chat|accounts).*tot.com/).test(link)
                             && !loadedUrlDict[link]
                         ) {
-                            promises.push(crawlPhone(link));
+                            links.push(link);
                         }
                     }
                 });
 
-                console.log('number of links', promises.length);
-                await Promise.all(promises)
+                await asyncChunks(links, crawlPhone, 10);
             }
 
             resolve();
