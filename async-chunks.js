@@ -18,10 +18,11 @@ const chunks = (arr, chunkSize) => {
  * @param [f] The function to return a promise
  * @param [concurrency] The concurrency number
  */
-module.exports = (arr, f, concurrency) => {
-    if (arr.length === 0) return Promise.resolve();
-    return Promise.all([chunks(arr, concurrency).reduce(
-        (acc, chunk) => acc.then(() => Promise.all(chunk.map(f))),
-        Promise.resolve()
-    )]);
+module.exports = async (arr, f, concurrency) => {
+    if (arr.length > 0) {
+        const batches = chunks(arr, concurrency);
+        for (const batch of batches) {
+            await Promise.all(batch.map(f));
+        }
+    }
 };

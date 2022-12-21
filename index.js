@@ -1,4 +1,4 @@
-const {Builder, Browser, By, Key, until} = require('selenium-webdriver');
+const {Builder, Browser} = require('selenium-webdriver');
 const cheerio = require('cheerio');
 const DBHelper = require('./db-helper');
 const asyncChunks = require('./async-chunks');
@@ -26,11 +26,13 @@ const blacklist = [
     'tiktok.com/',
     'blog.chotot.com',
     'chuong-trinh/vong-quay-may-man/',
+    '/recruiter-dashboard',
 ];
 
 // Init database
 const dbHelper = new DBHelper();
-dbHelper.truncate("contacts", () => {});
+dbHelper.truncate('contacts', () => {
+});
 
 /**
  * Handle logic of extract and save phone number
@@ -119,8 +121,8 @@ function crawlPhone(url) {
         }
 
         try {
-            const source = await getSourceFromUrl(url);
             loadedUrlDict[url] = true;
+            const source = await getSourceFromUrl(url);
             if (source) {
                 const $ = cheerio.load(source);
                 if (detailUrlRegex.test(url)) {
@@ -134,20 +136,21 @@ function crawlPhone(url) {
                     if (link) {
                         // Rebuild the link if missing hostname
                         link = link.split('#')[0];
+                        link = link.endsWith("/") ? link.slice(0, -1) : link;
                         if (/^\/.*/.test(link)) {
                             link = baseUrl + link
                         }
 
                         // Filter to reject useless links
                         if ((/^https:\/\/(?!trogiup|press|careers|chat|accounts).*tot.com/).test(link)
-                            && !loadedUrlDict[link]
+                            && !loadedUrlDict[link] && !links.includes(link)
                         ) {
                             links.push(link);
                         }
                     }
                 });
 
-                await asyncChunks(links, crawlPhone, 10);
+                await asyncChunks(links, crawlPhone, 2);
             }
 
             resolve();
@@ -158,7 +161,7 @@ function crawlPhone(url) {
 }
 
 // Start crawl phone number
-crawlPhone('https://www.chotot.com/')
+crawlPhone('https://www.chotot.com')
     .then(() => {
         console.log('DONE!!!');
         process.exit(0);
