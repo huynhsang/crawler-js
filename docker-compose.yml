@@ -1,0 +1,37 @@
+version: "3.7"
+
+services:
+  chrome:
+    image: selenium/node-chrome:4.7.2-20221219
+    shm_size: 2gb
+    depends_on:
+      - selenium-hub
+    environment:
+      - SE_EVENT_BUS_HOST=selenium-hub
+      - SE_EVENT_BUS_PUBLISH_PORT=4442
+      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+      - SE_NODE_MAX_INSTANCE=10
+      - SE_NODE_MAX_SESSIONS=10
+      - SE_NODE_OVERRIDE_MAX_SESSIONS=true
+      - SE_NODE_SESSION_TIMEOUT=180
+
+  selenium-hub:
+    image: selenium/hub:4.7.2-20221219
+    container_name: selenium-hub
+    ports:
+      - "4442:4442"
+      - "4443:4443"
+      - "4444:4444"
+
+  mysql:
+    image: 'bitnami/mysql:5.7.30'
+    container_name: crawler-mysql
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql/config/my_custom.cnf:/opt/bitnami/mysql/conf/my_custom.cnf:ro
+      - ./mysql/init:/docker-entrypoint-initdb.d
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_CHARACTER_SET=utf8mb4
+      - MYSQL_COLLATE=utf8mb4_general_ci
